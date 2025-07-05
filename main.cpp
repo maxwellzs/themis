@@ -6,7 +6,7 @@ int main(int argc, char **argv) {
     FLAGS_colorlogtostderr = 1;
     FLAGS_v = 10;
     FLAGS_log_dir = ".";
-
+    
     nglog::InitializeLogging(argv[0]);
     LOG(INFO) << "themis 2.0 started";
 

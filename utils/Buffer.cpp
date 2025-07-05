@@ -96,9 +96,8 @@ bool themis::BufferReader::sendTo(evutil_socket_t socket) {
             buffer.readIndex += sendSize;
             return true;
         }
-        // send next chunk until returns eagain
-        buffer.readIndex = 0;
-        ++current;
+       
+        buffer.readIndex += result;
     }
     return false;
 }
@@ -197,6 +196,8 @@ void themis::BufferReader::revert() {
 }
 
 void themis::BufferReader::finialize() {
+    // otherwise 
+    if(current == buffer.chunks.begin()) return;
     buffer.chunks.erase(buffer.chunks.begin(), current);
     originalReadIndex = buffer.readIndex;
 }

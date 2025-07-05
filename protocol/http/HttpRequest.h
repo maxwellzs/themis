@@ -32,6 +32,7 @@ namespace themis
         std::map<std::string, std::string> parameters;
         std::vector<uint8_t> body;
         const static std::map<std::string, Method> METHOD_MAP;
+        const static std::map<Method, std::string> METHOD_TO_STR;
 
     public:
         std::string& getPath() { return path; }
@@ -40,6 +41,9 @@ namespace themis
         std::map<std::string, std::string>& getParameters() { return parameters;}
         std::vector<uint8_t>& getBody() { return body; }
         Method getMethod() { return m; }
+        std::string getMethodString() {
+            return METHOD_TO_STR.at(m);
+        }
         /**
          * @brief try to get a header value, if present, return true
          * otherwise do nothing and return false

@@ -16,6 +16,20 @@ const std::map<std::string, themis::HttpRequest::Method> themis::HttpRequest::ME
 #undef __M
 };
 
+const std::map<themis::HttpRequest::Method, std::string> themis::HttpRequest::METHOD_TO_STR = {
+#define __M(x) {x, #x}
+    __M(GET),
+    __M(HEAD),
+    __M(POST),
+    __M(PUT),
+    __M(DELETE),
+    __M(CONNECT),
+    __M(OPTIONS),
+    __M(TRACE),
+    __M(PATCH)  
+#undef __M
+};
+
 bool themis::HttpRequest::getHeader(std::string key, std::string &out) {
     std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
         return std::tolower(c);

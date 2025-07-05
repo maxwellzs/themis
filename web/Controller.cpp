@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include <ng-log/logging.h>
 
 bool themis::MethodFilter::filter(const std::unique_ptr<HttpRequest> &req) {
     return method == req->getMethod();
@@ -38,6 +39,7 @@ void themis::ControllerManager::serveRequest(std::unique_ptr<HttpRequest> req,
     std::string& path = req->getPath();
     if(controllerMap.count(path)) {
 
+        LOG(INFO) << req->getMethodString() << " " << path;
         ResponseDetail detail(session, controllerMap.at(path)->service(std::move(req)), path);
         responseList.emplace_back(std::move(detail));
         // assign callback funciton when user resolve with response
@@ -66,6 +68,7 @@ void themis::ControllerManager::serveRequest(std::unique_ptr<HttpRequest> req,
 
     } else {
 
+        LOG(WARNING) << "Not Found : " << req->getMethodString() << " " << path;
         // not found
         serveNotFound(session, path);
 
