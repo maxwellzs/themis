@@ -106,9 +106,10 @@ namespace themis
          * this function should return immediately, and resolve the response promise afterwards
          * 
          * @param req request 
+         * @param queue event queue to construct new promise
          * @return std::unique_ptr<Response> response promise
          */
-        virtual std::unique_ptr<HttpResponsePromise> service(std::unique_ptr<HttpRequest> req) = 0;
+        virtual std::unique_ptr<HttpResponsePromise> service(std::unique_ptr<HttpRequest> req, const std::unique_ptr<EventQueue>& queue) = 0;
     };
     
 } // namespace themis

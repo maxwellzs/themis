@@ -40,7 +40,9 @@ void themis::ControllerManager::serveRequest(std::unique_ptr<HttpRequest> req,
     if(controllerMap.count(path)) {
 
         LOG(INFO) << req->getMethodString() << " " << path;
-        ResponseDetail detail(session, controllerMap.at(path)->service(std::move(req)), path);
+        ResponseDetail detail(session, 
+            controllerMap.at(path)->service(std::move(req), queue), 
+            path);
         responseList.emplace_back(std::move(detail));
         // assign callback funciton when user resolve with response
         responseList.back().promise->then([detailIterator = --responseList.end(), 

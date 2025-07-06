@@ -9,6 +9,10 @@ set(CMAKE_C_COMPILER clang)
 find_package(Libevent REQUIRED)
 find_package(ng-log REQUIRED)
 find_package(GTest REQUIRED)
+
+# find postgresql if exist
+find_package(PostgreSQL REQUIRED)
+
 include_directories(${CMAKE_SOURCE_DIR})
 
 add_library(themisRuntime SHARED 
@@ -22,6 +26,9 @@ add_library(themisRuntime SHARED
     "utils/Promise.cpp"
     "utils/EventQueue.cpp"
     "web/Controller.cpp"
+    "sql/driver/detail/PostgresqlConnectionPool.cpp"
+    "sql/driver/PostgresqlDriver.cpp"
+    "sql/Driver.cpp"
 )
 
 add_executable(themis 
@@ -30,11 +37,15 @@ add_executable(themis
 target_link_libraries(themisRuntime
     libevent::core
     ng-log::ng-log
+    PostgreSQL::PostgreSQL
 )
+
+enable_testing()
 add_executable(themis_tests 
     "tests/TestBuffer.cpp"
     "tests/TestHttp.cpp"
     "tests/TestPromise.cpp"
+    "tests/TestSQL.cpp"
 )
 target_link_libraries(themis_tests
     themisRuntime
@@ -43,3 +54,6 @@ target_link_libraries(themis_tests
 target_link_libraries(themis 
     themisRuntime
 )
+
+include(GoogleTest)
+gtest_discover_tests(themis_tests)
