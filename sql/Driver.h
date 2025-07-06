@@ -79,7 +79,7 @@ namespace themis
         void initializeAllPools() {
             static_assert(std::is_base_of<ConnectionPool, TPoolType>(), 
             "TPoolType must be derived of ConnectionPool");
-            for(auto p: pools) {
+            for(auto& p: pools) {
                 p.second->initialize();
             }
         }
@@ -92,17 +92,22 @@ namespace themis
          * @param id identifier
          * @param pool pool
          */
-        void addPool(std::string id, std::unique_ptr<TPoolType> pool) {
-            pools.insert({id, std::move(pool)});
+        void addConfigToPool(std::string id, DatasourceConfig config) {
+            static_assert(std::is_base_of<ConnectionPool, TPoolType>(), 
+            "TPoolType must be derived of ConnectionPool");
+            if(!pools.count(id)) {
+                pools.insert({id, std::make_unique<TPoolType>()});
+            }
+            pools.at(id)->addConfig(config);
         }
 
         /**
-         * @brief add a connection pool with default id
+         * @brief add a config to connection pool
          * 
-         * @param pool 
+         * @param pool connection pool
          */
-        void addPool(std::unique_ptr<TPoolType> pool) {
-            addPool("default_pool", std::move(pool));
+        void addConfigToPool(DatasourceConfig config) {
+            addConfigToPool("default_pool", config);
         }
 
         virtual ~Driver() = default;

@@ -6,7 +6,7 @@
 #include <libpq-fe.h>
 #include <vector>
 #include <queue>
-#include <atomic>
+#include <ng-log/logging.h>
 #include <stdexcept>
 #include <functional>
 
@@ -23,7 +23,7 @@ namespace themis
         PGResultSets() = default;
         PGResultSets(const PGResultSets&) = delete;
         void addResult(PGresult * result);
-        PGresult* operator[](size_t index) {
+        PGresult* at(size_t index) {
             return sets[index];
         }
     };
@@ -31,6 +31,8 @@ namespace themis
     class PostgresqlDriver;
 
     class PostgresqlConnectionPool : public ConnectionPool {
+        friend PostgresqlDriver;
+
     public:
         /// @brief use this function to submit query
         /// do NOT use any block method inside this otherwise the driver thread will jam
@@ -49,9 +51,6 @@ namespace themis
             PostgresqlConnectionPool& parentPool;
             /// @brief position in parent connection pool
             size_t pos; 
-
-            /// @brief lock the queue
-            std::atomic_flag queueFlag;
             /// @brief the sets to temporarily holds the result from query
             std::unique_ptr<PGResultSets> pendingResult;
 
@@ -70,6 +69,8 @@ namespace themis
             std::queue<QueryTask> queries;
 
             ~ConnectionDetail() {
+
+                LOG(INFO) << "connection with detail " << parentPool.configs[pos].toString() << " is closing"; 
                 // fail all queries 
                 while(!queries.empty()) {
                     QueryTask task = queries.front();
@@ -109,7 +110,7 @@ namespace themis
         void buildConnection(size_t configIndex);
 
         size_t indexGen;
-        
+
     public:
 
         void setEventbase(event_base* base) {

@@ -2,7 +2,6 @@
 #include <libpq-fe.h>
 #include <ng-log/logging.h>
 #include "../PostgresqlDriver.h"
-#include "utils/Spinlock.h"
 
 themis::PostgresqlConnectionPool::ConnectionDetail::ConnectionDetail(PGconn *conn, event_base *base, size_t pos, PostgresqlConnectionPool& parentPool)
 : conn(conn), pos(pos), parentPool(parentPool) {
@@ -78,7 +77,6 @@ themis::PostgresqlConnectionPool::ConnectionDetail::ConnectionDetail(PGconn *con
 
 
 void themis::PostgresqlConnectionPool::ConnectionDetail::submitQuery(QueryFunction func, QueryCallbackFunction cb, QueryErrorCallbackFunction fail) {
-    Spinlock lock(queueFlag);
     queries.push(QueryTask(func, cb, fail));
 }
 
@@ -109,7 +107,6 @@ void themis::PostgresqlConnectionPool::ConnectionDetail::handleConnectionRespons
     }
     // if no error occurred, call user callback and remove active task
     queries.front().cb(std::move(pendingResult));
-    Spinlock lock(queueFlag);
     queries.pop();
 }
 

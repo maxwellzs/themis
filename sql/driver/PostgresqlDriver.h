@@ -5,7 +5,6 @@
 #include "utils/EventQueue.h"
 #include "utils/Promise.h"
 #include <memory>
-#include <list>
 #include <thread>
 #include <libpq-fe.h>
 
@@ -23,7 +22,6 @@ namespace themis
 
         std::unique_ptr<EventQueue> eventQueue;
         std::unique_ptr<std::thread> driverThread;
-        std::list<std::unique_ptr<QueryPromise>> activeQuery;
 
         event_base* base;
         bool busy = false;
@@ -52,8 +50,9 @@ namespace themis
          * @return const std::unique_ptr<QueryPromise>& the query promise, 
          * the event queue this promise associated to is managed by driver thread, thus
          * the then and except function must be made thread-safe
+         * do NOT free the promise until it fail/fulfill, otherwise the entire driver will break
          */
-        const std::unique_ptr<QueryPromise>& query(std::string poolID, PostgresqlConnectionPool::QueryFunction func);
+        std::unique_ptr<QueryPromise> query(std::string poolID, PostgresqlConnectionPool::QueryFunction func);
         
         /**
          * @brief execute a query to the default pool
@@ -61,7 +60,7 @@ namespace themis
          * @param func query callback function
          * @return const std::unique_ptr<QueryPromise>& 
          */
-        const std::unique_ptr<QueryPromise>& query(PostgresqlConnectionPool::QueryFunction func) {
+        std::unique_ptr<QueryPromise> query(PostgresqlConnectionPool::QueryFunction func) {
             return query("default_pool", func);
         }
     };
