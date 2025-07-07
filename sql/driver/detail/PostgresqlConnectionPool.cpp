@@ -38,7 +38,12 @@ themis::PostgresqlConnectionPool::ConnectionDetail::ConnectionDetail(PGconn *con
             _this->handleConnectionError();
             return;
         }
-        _this->handleConnectionResponse();
+        try {
+            _this->handleConnectionResponse();
+        } catch(const std::exception& e) {
+            // the connection is probably broken
+            _this->handleConnectionError();
+        }
 
     }, this);
 
@@ -70,6 +75,31 @@ themis::PostgresqlConnectionPool::ConnectionDetail::ConnectionDetail(PGconn *con
         
     }, this);
 
+    reconnectEvent = event_new(base, -1, EV_TIMEOUT | EV_PERSIST, 
+        [] (evutil_socket_t fd, short what, void *arg) {
+
+            ConnectionDetail* _this = reinterpret_cast<ConnectionDetail *>(arg);
+            // try to reconnect once
+            try
+            {
+                _this->parentPool.buildConnection(_this->pos);
+            }
+            catch(const std::exception& e)
+            {
+                // not succeeded, add up retry count
+                ++ _this->retryCount;
+                auto& config = _this->parentPool.configs[_this->pos];
+                if (_this->retryCount > config.getMaxRetry()) {
+                    // retry procedure failed, thus should remove this connection 
+                    LOG(WARNING) << "connection with config " << config.toString() 
+                    << " cannot resume after " << config.getMaxRetry() << " times of retry";
+                    _this->parentPool.basePool[_this->pos] = nullptr;
+                }
+            }
+            // if this succeeded, _this pointer is no longer active and should immediately return
+
+        }, this);
+
     // register events
     event_add(readEvent, nullptr);
     // event_add(writeEvent, nullptr);
@@ -85,10 +115,12 @@ void themis::PostgresqlConnectionPool::ConnectionDetail::handleConnectionRespons
     if(PQisBusy(conn)) return;
     // the current query has ended
     // retrieve the result and invoke user callback
+    bool hasResult = false;
     for (PGresult* result = PQgetResult(conn); 
     result != nullptr; 
     result = PQgetResult(conn))
     {
+        hasResult = true;
         ExecStatusType status = PQresultStatus(result);
         if(status != PGRES_COMMAND_OK &&
         status != PGRES_TUPLES_OK) {
@@ -105,6 +137,7 @@ void themis::PostgresqlConnectionPool::ConnectionDetail::handleConnectionRespons
         // query ok
         pendingResult->addResult(result);
     }
+    if(!hasResult) throw std::exception();
     // if no error occurred, call user callback and remove active task
     queries.front().cb(std::move(pendingResult));
     queries.pop();
@@ -112,23 +145,9 @@ void themis::PostgresqlConnectionPool::ConnectionDetail::handleConnectionRespons
 
 void themis::PostgresqlConnectionPool::ConnectionDetail::handleConnectionError() {
     // retry untill max retry
-    size_t maxRetry = parentPool.configs[pos].getMaxRetry();
-    bool succeeded = false;
-    for (size_t i = 0; i < maxRetry; i++)
-    {
-        try
-        {
-            parentPool.buildConnection(pos);
-        }
-        catch(const std::exception& e)
-        {
-            continue;
-        }
-        succeeded = true;
-        break;
-    }
-    // delete inactive connection
-    if(!succeeded) parentPool.basePool[pos] = nullptr;
+    // if the timeout value is to small the connect operation will immediately fail
+    timeval tm {3,0};
+    event_add(reconnectEvent, &tm);
 }
 
 void themis::PGResultSets::clearResults() {
@@ -178,7 +197,9 @@ void themis::PostgresqlConnectionPool::buildConnection(size_t configIndex) {
     }
 
     LOG(INFO) << "succeded to connect in " << elapsed << " ms";
-    basePool[configIndex] = std::make_unique<ConnectionDetail>(connection, driverBase, configIndex, *this);
+    // note this immediately free the last connection (if exists)
+    basePool[configIndex] = 
+    std::make_unique<ConnectionDetail>(connection, driverBase, configIndex, *this);
 }
 
 void themis::PostgresqlConnectionPool::initialize() {

@@ -38,6 +38,9 @@ namespace themis
 
         std::list<SessionDetail> sessionList;
         using SessionIterator = std::list<SessionDetail>::iterator;
+
+        void prepareSession(SessionIterator* itPtr, evutil_socket_t fd);
+
         /// this function yield an valid handler
         using HandlerAllocateFunction = std::function<std::unique_ptr<SessionHandler> (std::unique_ptr<Session>)>;
 

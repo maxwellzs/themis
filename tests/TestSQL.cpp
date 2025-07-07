@@ -33,7 +33,7 @@ TEST(TestSQL, TestPostgresDriverBasic) {
         LOG(ERROR) << e->what();
         ASSERT_TRUE(false);
     });
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
 
     PostgresqlDriver::get()->shutdown();
 }

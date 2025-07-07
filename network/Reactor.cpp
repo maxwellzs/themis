@@ -16,9 +16,13 @@ void themis::Reactor::onAccept(evutil_socket_t fd, sockaddr_in addr) {
     SessionDetail detail(*this, std::move(handler));
     sessionList.emplace_back(std::move(detail));
     SessionIterator* itPtr = new SessionIterator(--sessionList.end());
+    prepareSession(itPtr, fd);
 
-    VLOG(5) << "session started : " << (**itPtr).handler->getSession()->toString();
+    VLOG(5) << "accepted session : " << (**itPtr).handler->getSession()->toString();
 
+}
+
+void themis::Reactor::prepareSession(SessionIterator * itPtr, evutil_socket_t fd) {
     // set up read&write events
     event *readEvent = event_new(base, fd, EV_READ | EV_TIMEOUT | EV_PERSIST, [](evutil_socket_t fd, short ev, void *args) {
 
@@ -39,6 +43,12 @@ void themis::Reactor::onAccept(evutil_socket_t fd, sockaddr_in addr) {
             // error in session
             // remove connection
             VLOG(5) << "session closed : " << handler->getSession()->toString();
+            parent.sessionList.erase(*it);
+            delete it;
+        }
+
+        if(!handler->getSession().get()) {
+            // the session has been transfered to another reactor, remove it
             parent.sessionList.erase(*it);
             delete it;
         }
@@ -66,17 +76,17 @@ void themis::Reactor::onAccept(evutil_socket_t fd, sockaddr_in addr) {
         }
     },itPtr);
 
-
-    // enable read event
+     // enable read event
     event_add(readEvent, nullptr);
     (**itPtr).handler->getSession()->setReadEvent(readEvent);
     (**itPtr).handler->getSession()->setWriteEvent(writeEvent);
 }
 
-void themis::Reactor::handleSessionRead(evutil_socket_t fd, const std::unique_ptr<SessionHandler>& handler) {
+void themis::Reactor::handleSessionRead(evutil_socket_t fd, const std::unique_ptr<SessionHandler> &handler) {
     BufferWriter writer(handler->getSession()->getInputBuffer());
     writer.receiveFrom(fd);
     // call handler to process the input buffer
+    // if the session in the handler no longer exists, it means a connection upgrade
     handler->handleSession();
 }
 

@@ -24,6 +24,8 @@ void themis::PostgresqlDriver::loopOnce() {
     // check for unexecuted tasks
     for (auto& i: pools) {
         for (auto& j: i.second->basePool) {
+            // null means this connection is down temporarily
+            if(!j.get()) continue;
             if(!PQisBusy(j->conn) && !j->queries.empty()) {
                 // the connection is idle for new task, submit one
                 // if the function blocked here, the whole driver will jam

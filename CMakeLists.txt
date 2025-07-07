@@ -22,6 +22,7 @@ add_library(themisRuntime SHARED
     "protocol/http/HttpRequest.cpp"
     "protocol/http/HttpResponse.cpp"
     "protocol/http/HttpSessionHandler.cpp"
+    "protocol/websocket/WebsocketSessionHandler.cpp"
     "utils/Buffer.cpp"
     "utils/Promise.cpp"
     "utils/EventQueue.cpp"

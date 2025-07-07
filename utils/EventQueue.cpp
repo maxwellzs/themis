@@ -1,5 +1,6 @@
 #include "EventQueue.h"
 #include "Spinlock.h"
+#include <ng-log/logging.h>
 
 
 void themis::EventQueue::addImmediate(CallbackFunction fn) {
@@ -20,7 +21,14 @@ bool themis::EventQueue::poll() {
         lock.unlock();
         // if not unlocked before calling user callback, 
         // there will be deadlock if user call addImmediate
-        p();
+        try
+        {
+            p();
+        }
+        catch(const std::exception& e)
+        {
+            LOG(WARNING) << "an uncaught exception happened in the event queue, do not do this otherwise there might be unhandled exception";
+        }
     }
     return busy;
 }

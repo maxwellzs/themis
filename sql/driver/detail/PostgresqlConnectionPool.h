@@ -48,9 +48,12 @@ namespace themis
             PGconn *conn;
             event *readEvent; 
             event *writeEvent;
+            event *reconnectEvent;
             PostgresqlConnectionPool& parentPool;
             /// @brief position in parent connection pool
             size_t pos; 
+
+            size_t retryCount = 0;
             /// @brief the sets to temporarily holds the result from query
             std::unique_ptr<PGResultSets> pendingResult;
 
@@ -81,18 +84,12 @@ namespace themis
 
                 if(readEvent) event_free(readEvent);
                 if(writeEvent) event_free(writeEvent);
+                if(reconnectEvent) event_free(reconnectEvent);
                 if(conn) PQfinish(conn);
             }
             ConnectionDetail(PGconn* conn, event_base* base, size_t pos, PostgresqlConnectionPool& parentPool);
-            ConnectionDetail(const ConnectionDetail& d)
-            : conn(d.conn), readEvent(d.readEvent), 
-            writeEvent(d.writeEvent), pos(d.pos), parentPool(d.parentPool) {}
-            void operator=(const ConnectionDetail& d) {
-                conn = d.conn;
-                readEvent = d.readEvent;
-                writeEvent = d.writeEvent;
-                pos = d.pos;
-            } 
+            ConnectionDetail(const ConnectionDetail& d) = delete;
+            void operator=(const ConnectionDetail& d) = delete;
 
             void submitQuery(QueryFunction func, QueryCallbackFunction cb, QueryErrorCallbackFunction fail);
             void handleConnectionResponse();

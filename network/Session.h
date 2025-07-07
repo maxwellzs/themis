@@ -51,7 +51,7 @@ namespace themis {
 
     /**
      * @brief a session handler is a container to a session, and handle all input
-     * data like parsing 
+     * data, such as parsing the data into a request or message
      * 
      */
     class SessionHandler {
