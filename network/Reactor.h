@@ -14,6 +14,8 @@
 namespace themis
 {
 
+    class SessionMovedException : public std::exception {};
+
     /**
      * @brief a Reactor handles the network sockets and dispatch io events
      * a channel will be listening on a specific ip:port and will keep accept input
@@ -39,7 +41,7 @@ namespace themis
         std::list<SessionDetail> sessionList;
         using SessionIterator = std::list<SessionDetail>::iterator;
 
-        void prepareSession(SessionIterator* itPtr, evutil_socket_t fd);
+        void prepareSession(SessionIterator* itPtr);
 
         /// this function yield an valid handler
         using HandlerAllocateFunction = std::function<std::unique_ptr<SessionHandler> (std::unique_ptr<Session>)>;
@@ -54,22 +56,28 @@ namespace themis
         bool idle = true;
     public:
         /**
-         * @brief Construct a new Channel object listening on the given ip and port
+         * @brief Construct a new Reactor object listening on the given ip and port
          * 
          * @param ip listen ip
          * @param port port
          */
         Reactor(const std::string& ip, uint16_t port, HandlerAllocateFunction allocator);
+        /**
+         * @brief Construct a new Reactor without listening on port
+         * the user must invoke the function to add existing handlers in order to make this reactor function properly
+         * 
+         */
+        Reactor();
         ~Reactor();
 
         /**
          * @brief Set the Connection Timeout, after timeout seconds, the
          * connection will be removed out of the queue
          * 
-         * @param timeout 
+         * @param timeout the timeout value
          */
         void setConnectionTimeout(time_t timeout);
-
+        void addSessionHandler(std::unique_ptr<SessionHandler> handler);
         /**
          * @brief loop through events 
          * 

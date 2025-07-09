@@ -23,9 +23,11 @@ add_library(themisRuntime SHARED
     "protocol/http/HttpResponse.cpp"
     "protocol/http/HttpSessionHandler.cpp"
     "protocol/websocket/WebsocketSessionHandler.cpp"
+    "protocol/websocket/WebsocketFrame.cpp"
     "utils/Buffer.cpp"
     "utils/Promise.cpp"
     "utils/EventQueue.cpp"
+    "web/WebsocketController.cpp"
     "web/Controller.cpp"
     "sql/driver/detail/PostgresqlConnectionPool.cpp"
     "sql/driver/PostgresqlDriver.cpp"
@@ -35,18 +37,21 @@ add_library(themisRuntime SHARED
 add_executable(themis 
     "main.cpp"
 )
+add_executable(example_websocket
+    "examples/Websocket.cpp"
+)
 target_link_libraries(themisRuntime
     libevent::core
     ng-log::ng-log
     PostgreSQL::PostgreSQL
 )
-
 enable_testing()
 add_executable(themis_tests 
     "tests/TestBuffer.cpp"
     "tests/TestHttp.cpp"
     "tests/TestPromise.cpp"
     "tests/TestSQL.cpp"
+    "tests/TestWebsocket.cpp"
 )
 target_link_libraries(themis_tests
     themisRuntime
@@ -55,6 +60,8 @@ target_link_libraries(themis_tests
 target_link_libraries(themis 
     themisRuntime
 )
-
+target_link_libraries(example_websocket 
+    themisRuntime
+)
 include(GoogleTest)
 gtest_discover_tests(themis_tests)

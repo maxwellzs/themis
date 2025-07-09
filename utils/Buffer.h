@@ -43,6 +43,13 @@ namespace themis {
          * @param chunkSize the size of chunk
          */
         Buffer(size_t chunkSize = 1024);
+        /**
+         * @brief Move construct a buffer with an existing one, the existing one must not be used anymore
+         * 
+         * @param b original buffer
+         */
+        Buffer(Buffer&& b) : chunks(std::move(b.chunks)), 
+        readIndex(b.readIndex), writeIndex(b.writeIndex), SIZE_PER_CHUNK(b.SIZE_PER_CHUNK) {}
 
         bool empty() {
             return readIndex == writeIndex && chunks.size() == 1;
@@ -137,6 +144,15 @@ namespace themis {
          * @return number bytes acquired
          */
         size_t getBytes(std::vector<uint8_t>& out, size_t count);
+        /**
+         * @brief attempt to put @param count amount of bytes to the dest location
+         * and return the size actually read
+         * 
+         * @param dest 
+         * @param count 
+         * @return size_t 
+         */
+        size_t getBytes(void* dest, size_t count);
 
         /**
          * @brief reset current chunk and read position

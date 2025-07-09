@@ -14,24 +14,31 @@ namespace themis {
      */
     class Session {
     private:
+        evutil_socket_t fd;
         Buffer input, output;
         const sockaddr_in addr;
         event* readEvent,* writeEvent;
-
         time_t lastActiveTime;
+        bool alive = true;
 
-        Reactor& parent;
     public:
         ~Session();
-        Session(Reactor& parent, sockaddr_in addr);
+        Session(sockaddr_in addr, evutil_socket_t fd);
+        /// @brief use this move construct a new session during the connection upgrade
+        /// @param s 
+        Session(Session&& s) 
+        : input(std::move(s.input)), output(std::move(s.output)), 
+        addr(s.addr), lastActiveTime(s.lastActiveTime), fd(s.fd) {
+            s.alive = false;
+        }
         
+        evutil_socket_t getSocket() { return fd; }
         void setReadEvent(event* e) { readEvent = e;}
         void setWriteEvent(event* e) { writeEvent = e;}
         Buffer& getInputBuffer() { return input;}
         Buffer& getOutputBuffer() { return output;}
         event* getReadEvent() { return readEvent;}
         event* getWriteEvent() { return writeEvent;}
-        Reactor& getParentReactor() { return parent;}
 
         /**
          * @brief get if this connection is timed out
@@ -60,10 +67,17 @@ namespace themis {
         std::unique_ptr<Session> session; 
 
     public:
+        void setWriteEvent(event* ev) {
+            session->setWriteEvent(ev);
+        }
+        void setReadEvent(event* ev) {
+            session->setReadEvent(ev);
+        }
+
         SessionHandler(std::unique_ptr<Session> s) : session(std::move(s)) {};
-        /// this function take over the handler from @param handler 
-        /// after this, handler should be deconstructed
-        SessionHandler(SessionHandler&& handler): session(std::move(handler.session)) {}
+        /// this function take over the session 
+        /// after this, the old handler should not be in use any more
+        SessionHandler(Session&& handler): session(std::make_unique<Session>(std::move(handler))) {}
         virtual ~SessionHandler() = default;
         virtual void handleSession() = 0;
         /// @brief get inner session

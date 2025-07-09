@@ -162,6 +162,11 @@ void themis::BufferReader::getline(std::string &out) {
 }
 
 size_t themis::BufferReader::getBytes(std::vector<uint8_t> &out, size_t count) {
+    return getBytes(out.data(), count);
+}
+
+size_t themis::BufferReader::getBytes(void *dest, size_t count) {
+    uint8_t* ptr = reinterpret_cast<uint8_t *>(dest);
     size_t acquired = 0;
     while(acquired < count) {
 
@@ -177,12 +182,11 @@ size_t themis::BufferReader::getBytes(std::vector<uint8_t> &out, size_t count) {
         if(current == --buffer.chunks.end()) {
             // last chunk
             s = buffer.writeIndex - buffer.readIndex;
-            std::memcpy(out.data() + acquired, (*current).data() + buffer.readIndex, s);
         } else {
             // middle chunks or first chunk
             s = buffer.SIZE_PER_CHUNK - buffer.readIndex;
-            std::memcpy(out.data() + acquired, (*current).data() + buffer.readIndex, s);
         }
+        std::memcpy(ptr + acquired, (*current).data() + buffer.readIndex, s);
 
         buffer.readIndex += s;
         acquired += s;

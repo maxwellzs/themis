@@ -6,7 +6,7 @@
 TEST(TestHttp, TestRequestParseWithLength) {
     using namespace themis;
     Reactor *r = nullptr;
-    auto session = std::make_unique<Session>(*r, sockaddr_in());
+    auto session = std::make_unique<Session>(sockaddr_in(), 0);
     HttpSessionHandler handler(std::move(session), [](std::unique_ptr<HttpRequest>, 
         const std::unique_ptr<Session>&) {
 

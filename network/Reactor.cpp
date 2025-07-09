@@ -11,18 +11,20 @@ void themis::Reactor::onAccept(evutil_socket_t fd, sockaddr_in addr) {
     // add client to the connection list
     evutil_make_socket_nonblocking(fd);
     // make session object and the handler for it
-    auto session = std::make_unique<Session>(*this, addr);
+    auto session = std::make_unique<Session>(addr, fd);
     auto handler = allocator(std::move(session));
     SessionDetail detail(*this, std::move(handler));
     sessionList.emplace_back(std::move(detail));
     SessionIterator* itPtr = new SessionIterator(--sessionList.end());
-    prepareSession(itPtr, fd);
+    prepareSession(itPtr);
 
     VLOG(5) << "accepted session : " << (**itPtr).handler->getSession()->toString();
 
 }
 
-void themis::Reactor::prepareSession(SessionIterator * itPtr, evutil_socket_t fd) {
+void themis::Reactor::prepareSession(SessionIterator * itPtr) {
+    
+    evutil_socket_t fd = (**itPtr).handler->getSession()->getSocket();
     // set up read&write events
     event *readEvent = event_new(base, fd, EV_READ | EV_TIMEOUT | EV_PERSIST, [](evutil_socket_t fd, short ev, void *args) {
 
@@ -39,16 +41,14 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr, evutil_socket_t fd
             }
             (**it).handler->getSession()->setLastActive(time(nullptr));
             parent.handleSessionRead(fd,handler);
-        } catch (const std::exception &e) {
+        } catch(const SessionMovedException& move) {
+            // the session no longer belongs to this reactor
+            parent.sessionList.erase(*it);
+            delete it;
+        }catch (const std::exception &e) {
             // error in session
             // remove connection
             VLOG(5) << "session closed : " << handler->getSession()->toString();
-            parent.sessionList.erase(*it);
-            delete it;
-        }
-
-        if(!handler->getSession().get()) {
-            // the session has been transfered to another reactor, remove it
             parent.sessionList.erase(*it);
             delete it;
         }
@@ -127,13 +127,26 @@ themis::Reactor::Reactor(const std::string &ip, uint16_t port, HandlerAllocateFu
     LOG(INFO) << "Reactor listening at " << ip << ":" << port;
 }
 
+themis::Reactor::Reactor() : base(event_base_new()) {
+
+}
+
 themis::Reactor::~Reactor() {
-    evconnlistener_free(listener);
+    if(listener) evconnlistener_free(listener);
     event_base_free(base);
 }
 
 void themis::Reactor::setConnectionTimeout(time_t timeout) {
     timeout = timeout;
+}
+
+void themis::Reactor::addSessionHandler(std::unique_ptr<SessionHandler> handler) {
+
+    SessionDetail detail(*this, std::move(handler));
+    sessionList.emplace_back(std::move(detail));
+    SessionIterator* it = new SessionIterator(--sessionList.end());
+    prepareSession(it);
+
 }
 
 void themis::Reactor::loopOnce() {
