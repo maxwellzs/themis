@@ -22,7 +22,7 @@ void themis::Reactor::onAccept(evutil_socket_t fd, sockaddr_in addr) {
 
 }
 
-void themis::Reactor::prepareSession(SessionIterator * itPtr) {
+void themis::Reactor::prepareSession(SessionIterator * itPtr, bool toggleWrite) {
     
     evutil_socket_t fd = (**itPtr).handler->getSession()->getSocket();
     // set up read&write events
@@ -77,6 +77,7 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr) {
     },itPtr);
 
      // enable read event
+    if(toggleWrite) event_add(writeEvent, nullptr);
     event_add(readEvent, nullptr);
     (**itPtr).handler->getSession()->setReadEvent(readEvent);
     (**itPtr).handler->getSession()->setWriteEvent(writeEvent);
@@ -145,7 +146,7 @@ void themis::Reactor::addSessionHandler(std::unique_ptr<SessionHandler> handler)
     SessionDetail detail(*this, std::move(handler));
     sessionList.emplace_back(std::move(detail));
     SessionIterator* it = new SessionIterator(--sessionList.end());
-    prepareSession(it);
+    prepareSession(it, true);
 
 }
 

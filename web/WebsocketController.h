@@ -15,7 +15,8 @@ namespace themis
     class WebsocketController {
     public:
         using ListenerAllocator 
-        = std::function<std::unique_ptr<WebsocketSessionHandler::EventListener> (const std::unique_ptr<EventQueue>& queue)>;
+        = std::function<std::unique_ptr<WebsocketSessionHandler::EventListener> 
+        (const std::unique_ptr<EventQueue>&, WebsocketSessionHandler&)>;
     private:
         /// @brief the path this controller listened to, when there are
         /// a connection upgrade http request, and the path equals this, then a connection upgrade will be made
@@ -33,12 +34,9 @@ namespace themis
         : path(path), allocator(listener) {}
 
         std::unique_ptr<WebsocketSessionHandler::EventListener> 
-        service(const std::unique_ptr<EventQueue>& queue);
+        service(const std::unique_ptr<EventQueue>& queue, WebsocketSessionHandler&);
 
     };
-
-#define MAKE_WEBSOCKET(path, queue, func, ...) std::make_unique<themis::WebsocketController>(path, \
-     [__VA_ARGS__](const std::unique_ptr<themis::EventQueue>& queue) -> std::unique_ptr<themis::WebsocketSessionHandler::EventListener> func)
 
     /**
      * @brief a web socket controller handles the connection upgrade and
@@ -48,7 +46,7 @@ namespace themis
     class WebsocketControllerManager {
     private:
         std::map<std::string, std::unique_ptr<WebsocketController>> controllerMap;
-        std::unique_ptr<EventQueue> eventQueue;
+        std::unique_ptr<EventQueue> eventQueue = std::make_unique<EventQueue>();
 
         std::string calculateSecKey(std::string client);
         /**
@@ -61,7 +59,14 @@ namespace themis
 
     public:
         
-        WebsocketControllerManager& addController(std::unique_ptr<WebsocketController> controller) {
+        template<typename ListenerType, typename ... TArgs>
+        WebsocketControllerManager& addController(std::string path, TArgs ...args) {
+            static_assert(std::is_base_of_v<WebsocketSessionHandler::EventListener, ListenerType>, 
+                "listener type must be derived of themis::WebsocketSessionHandler::EventListener");
+            auto controller = std::make_unique<WebsocketController>(path, [args...](const std::unique_ptr<EventQueue>& queue, WebsocketSessionHandler& handler) 
+            -> std::unique_ptr<WebsocketSessionHandler::EventListener>  {
+                return std::make_unique<ListenerType>(handler, queue, args ...);
+            });
             controllerMap.insert({controller->getPath(), std::move(controller)});
             return *this;
         }
@@ -72,7 +77,7 @@ namespace themis
          * 
          * @param request 
          * @param old 
-         * @return std::unique_ptr<WebsocketSessionHandler> 
+         * @return std::unique_ptr<WebsocketSessionHandler> null if the upgrade did not happened
          */
         std::unique_ptr<WebsocketSessionHandler> 
         upgradeSession(const std::unique_ptr<HttpRequest>& request, const std::unique_ptr<Session>& old);

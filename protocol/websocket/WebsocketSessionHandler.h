@@ -2,6 +2,7 @@
 #define WebsocketSessionHandler_h 1
 
 #include <variant>
+#include "utils/EventQueue.h"
 #include "network/Session.h"
 #include "WebsocketFrame.h"
 
@@ -23,10 +24,20 @@ namespace themis
          * 
          */
         class EventListener {
+        private:
+            /// @brief use this to push data to client
+            WebsocketSessionHandler& parentHandler;
+        protected:
+            /// @brief use this to set timed or interval events
+            const std::unique_ptr<EventQueue>& eventQueue;
+
+            
         public:
+            EventListener(WebsocketSessionHandler& handler, const std::unique_ptr<EventQueue>& queue) 
+            : parentHandler(handler), eventQueue(queue) {}
             virtual ~EventListener() = default;
             virtual void onText(WebsocketSessionHandler& handler, const std::string& msg) {};
-            virtual void onBinary(WebsocketSessionHandler& handler, const std::vector<uint8_t>& buffer) {};
+            virtual void onBinary(WebsocketSessionHandler& handler, const std::vector<uint8_t>& msg) {};
             virtual void onDisconnect() {};
         };
 
@@ -34,6 +45,19 @@ namespace themis
         std::unique_ptr<WebsocketFrame> pendingFrame = std::make_unique<WebsocketFrame>();
         std::unique_ptr<EventListener> listener;
         std::variant<std::vector<uint8_t>, std::string> message;
+
+        template<class ...Ty>
+        struct MessageVisitor : Ty... {
+            using Ty::operator()...;
+        };
+        template<class... Ts> MessageVisitor(Ts...) -> MessageVisitor<Ts...>;
+
+        /**
+         * @brief handle the frame when it reached the COMPLETE state
+         * 
+         */
+        void dispatchFrame();
+
     public:
         ~WebsocketSessionHandler() {
             // this means this handler is removed by reactor for some reason
@@ -41,9 +65,14 @@ namespace themis
             if(listener.get()) listener->onDisconnect();
         }
 
-        WebsocketSessionHandler(const std::unique_ptr<Session>& old, std::unique_ptr<EventListener> listener) 
-        : SessionHandler(std::move(*old.get())), listener(std::move(listener)) {
+        void setListener(std::unique_ptr<EventListener> listener) {
+            listener = std::move(listener);
+        }
+
+        WebsocketSessionHandler(const std::unique_ptr<Session>& old) 
+        : SessionHandler(std::move(*old.get())) {
             // disable timeout
+            // implement this feature by using ping mechanism
             session->setLastActive(0x7fffffffffffffffl);
         }
 

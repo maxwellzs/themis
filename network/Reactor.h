@@ -41,7 +41,7 @@ namespace themis
         std::list<SessionDetail> sessionList;
         using SessionIterator = std::list<SessionDetail>::iterator;
 
-        void prepareSession(SessionIterator* itPtr);
+        void prepareSession(SessionIterator* itPtr, bool toggleWrite = false);
 
         /// this function yield an valid handler
         using HandlerAllocateFunction = std::function<std::unique_ptr<SessionHandler> (std::unique_ptr<Session>)>;

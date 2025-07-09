@@ -27,6 +27,7 @@ void themis::WebsocketControllerManager::serveUpgradeResponse(std::string secKey
     std::string key = calculateSecKey(secKey);
     HttpResponse resp;
     // return a upgrade response to client
+    resp.setStatus(101);
     resp.getHeaders().insert({"Upgrade", "websocket"});
     resp.getHeaders().insert({"Connection", "Upgrade"});
     resp.getHeaders().insert({"Sec-WebSocket-Accept", key});
@@ -42,17 +43,19 @@ themis::WebsocketControllerManager::upgradeSession(const std::unique_ptr<HttpReq
     if(controllerMap.count(path) && 
     request->getHeader("Connection", connection) && 
     connection == "Upgrade" &&
-    request->getHeader("Sec-WebSocket-Accept", secKey)) {
+    request->getHeader("Sec-WebSocket-key", secKey)) {
 
         serveUpgradeResponse(secKey, old);
         // upgrade the old session into websocket session
-        return std::make_unique<WebsocketSessionHandler>(old, controllerMap.at(path)->service(eventQueue));
-
+        auto handler =  std::make_unique<WebsocketSessionHandler>(old);
+        auto listener = controllerMap.at(path)->service(eventQueue, *handler.get());
+        handler->setListener(std::move(listener));
+        return handler;
     } 
     return nullptr;
 }
 
 std::unique_ptr<themis::WebsocketSessionHandler::EventListener> 
-themis::WebsocketController::service(const std::unique_ptr<EventQueue> &queue) {
-    return allocator(queue);
+themis::WebsocketController::service(const std::unique_ptr<EventQueue> &queue, WebsocketSessionHandler& handler) {
+    return allocator(queue, handler);
 }

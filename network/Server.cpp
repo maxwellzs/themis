@@ -9,6 +9,9 @@ themis::Server::~Server() {
 }
 
 themis::Server::Server(const std::string &ip, uint16_t port) {
+
+    upgradeFlag.clear();
+
     httpReactor = std::make_unique<Reactor>(ip, port,
         [this](std::unique_ptr<Session> session) -> std::unique_ptr<SessionHandler> {
 
@@ -40,10 +43,11 @@ themis::Server::Server(const std::string &ip, uint16_t port) {
                 // check if there are any pending upgrades
                 while(!upgradeQueue.empty()) {
                     std::unique_ptr<SessionHandler> handler = std::move(upgradeQueue.front());
+                    LOG(INFO) << "upgrading session : " << handler->getSession()->toString();
                     upgradeQueue.pop();
+                    // toggle write event to write out the handshake
                     wsReactor->addSessionHandler(std::move(handler));
                 }
-                lock.unlock();
             }
             
             // loop through ws reactor for io events

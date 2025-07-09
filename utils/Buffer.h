@@ -94,6 +94,14 @@ namespace themis {
          * @param s 
          */
         void write(const std::string& s);
+
+        /**
+         * @brief attemp to put @param count number of byte to the buffer
+         * 
+         * @param src source pointer
+         * @param count how many bytes
+         */
+        void write(const void* src, size_t count);
     };
 
     /**

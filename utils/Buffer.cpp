@@ -44,13 +44,18 @@ void themis::BufferWriter::receiveFrom(evutil_socket_t socket) {
 }
 
 void themis::BufferWriter::write(const std::string &s) {
-    for(size_t copied = 0; copied < s.length(); ) {
+    write(s.data(), s.length());
+}
+
+void themis::BufferWriter::write(const void *src, size_t count) {
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(src);
+    for(size_t copied = 0; copied < count; ) {
         auto& lastChunk = buffer.chunks.back();
         size_t capacity = lastChunk.size() - buffer.writeIndex;
-        size_t remain = s.length() - copied;
+        size_t remain = count - copied;
         size_t copySize = capacity > remain ? remain : capacity;
         
-        std::memcpy(lastChunk.data() + buffer.writeIndex, s.data() + copied, copySize);
+        std::memcpy(lastChunk.data() + buffer.writeIndex, ptr + copied, copySize);
         copied += copySize;
         buffer.writeIndex += copySize;
         
@@ -178,13 +183,14 @@ size_t themis::BufferReader::getBytes(void *dest, size_t count) {
         if(current == buffer.chunks.end() ||
         (current == --buffer.chunks.end() && buffer.readIndex == buffer.writeIndex)) return acquired;
 
+        size_t await = count - acquired;
         size_t s;
         if(current == --buffer.chunks.end()) {
             // last chunk
-            s = buffer.writeIndex - buffer.readIndex;
+            s = buffer.writeIndex - buffer.readIndex > await ? await : (buffer.writeIndex - buffer.readIndex);
         } else {
             // middle chunks or first chunk
-            s = buffer.SIZE_PER_CHUNK - buffer.readIndex;
+            s = buffer.SIZE_PER_CHUNK - buffer.readIndex > await ? await : (buffer.SIZE_PER_CHUNK - buffer.readIndex);
         }
         std::memcpy(ptr + acquired, (*current).data() + buffer.readIndex, s);
 
