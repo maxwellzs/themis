@@ -5,6 +5,7 @@
 #include "utils/EventQueue.h"
 #include "network/Session.h"
 #include "WebsocketFrame.h"
+#include "WebsocketWriter.h"
 
 namespace themis
 {
@@ -23,18 +24,15 @@ namespace themis
          * parsed from websocket session handler
          * 
          */
-        class EventListener {
-        private:
-            /// @brief use this to push data to client
-            WebsocketSessionHandler& parentHandler;
+        class EventListener {            
         protected:
             /// @brief use this to set timed or interval events
             const std::unique_ptr<EventQueue>& eventQueue;
-
-            
+            /// @brief use this to push data to client
+            WebsocketSessionHandler& ws;
         public:
             EventListener(WebsocketSessionHandler& handler, const std::unique_ptr<EventQueue>& queue) 
-            : parentHandler(handler), eventQueue(queue) {}
+            : ws(handler), eventQueue(queue) {}
             virtual ~EventListener() = default;
             virtual void onText(WebsocketSessionHandler& handler, const std::string& msg) {};
             virtual void onBinary(WebsocketSessionHandler& handler, const std::vector<uint8_t>& msg) {};
@@ -45,6 +43,7 @@ namespace themis
         std::unique_ptr<WebsocketFrame> pendingFrame = std::make_unique<WebsocketFrame>();
         std::unique_ptr<EventListener> listener;
         std::variant<std::vector<uint8_t>, std::string> message;
+        WebsocketWriter wsWriter;
 
         template<class ...Ty>
         struct MessageVisitor : Ty... {
@@ -59,6 +58,21 @@ namespace themis
         void dispatchFrame();
 
     public:
+        std::ostream& getOutputStream() {
+            return wsWriter.getOutputStream();
+        }
+
+        /**
+         * @brief this proxy the finish from Websocket writer, but also active write event so that io can happen
+         * 
+         * @param text if the data in output stream is text
+         */
+        void finish(bool text);
+
+        void setMaxPayloadSize(size_t newSize) {
+            wsWriter.setMaxPayloadSize(newSize);
+        }
+
         ~WebsocketSessionHandler() {
             // this means this handler is removed by reactor for some reason
             // thus calling the disconnect callback
@@ -66,11 +80,11 @@ namespace themis
         }
 
         void setListener(std::unique_ptr<EventListener> listener) {
-            listener = std::move(listener);
+            this->listener = std::move(listener);
         }
 
         WebsocketSessionHandler(const std::unique_ptr<Session>& old) 
-        : SessionHandler(std::move(*old.get())) {
+        : SessionHandler(std::move(*old.get())), wsWriter(session->getOutputBuffer()) {
             // disable timeout
             // implement this feature by using ping mechanism
             session->setLastActive(0x7fffffffffffffffl);

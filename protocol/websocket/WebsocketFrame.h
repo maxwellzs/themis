@@ -38,10 +38,23 @@ namespace themis
         uint8_t maskingKey[4];
 
     public:
-        WebsocketFrameHeader() = default;
-        WebsocketFrameHeader(bool fin, Operation opcode, uint8_t mask[4], size_t payloadLength)
-        : finalFrame(fin), opcode(opcode), payloadLength(payloadLength) {
+        /**
+         * @brief Construct a new Websocket Frame header using mask
+         * 
+         * @param mask the mask
+         */
+        WebsocketFrameHeader(uint8_t mask[4]) {
+            masked = true;
+            std::memset(rsv,0, sizeof(rsv));
             std::memcpy(maskingKey, mask, 4);
+        }
+        /**
+         * @brief Construct a new Websocket Frame Header without masking operation
+         * 
+         */
+        WebsocketFrameHeader() {
+            masked = false;
+            std::memset(rsv,0, sizeof(rsv));
         }
         /**
          * @brief try to parse the header from the given buffer
@@ -58,6 +71,10 @@ namespace themis
          * @param writer target buffer writer
          */
         void writeTo(BufferWriter& writer);
+
+        void setFinalFrame(bool b) { finalFrame = b; }
+        void setOperation(Operation op) { opcode = op; }
+        void setPayloadLength(uint64_t length) { payloadLength = length; }
     };
     
     /**
@@ -106,6 +123,8 @@ namespace themis
         void parseFrom(BufferReader& reader);
 
     };
+
+   
 
 } // namespace themis
 

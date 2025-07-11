@@ -12,12 +12,12 @@ const std::map<uint8_t, themis::WebsocketFrameHeader::Operation> themis::Websock
 };
 
 const std::map<themis::WebsocketFrameHeader::Operation,uint8_t> themis::WebsocketFrameHeader::OPCODE_MAP = {
-    {CONTINUATION_FRAME, 0x0},
-    {TEXT_FRAME, 0x1},
-    {BINARY_FRAME, 0x2},
-    {CONNECTION_CLOSE_FRAME, 0x8},
-    {PING_FRAME, 0x9},
-    {PONG_FRAME, 0xA},
+    {CONTINUATION_FRAME,        0x0},
+    {TEXT_FRAME,                0x1},
+    {BINARY_FRAME,              0x2},
+    {CONNECTION_CLOSE_FRAME,    0x8},
+    {PING_FRAME,                0x9},
+    {PONG_FRAME,                0xA},
 };
 
 void themis::WebsocketFrame::parseBody(BufferReader &reader) {
@@ -144,7 +144,7 @@ void themis::WebsocketFrameHeader::writeTo(BufferWriter &writer) {
         rawHeader[1] = (masked ? 0x80 : 0) | ((uint8_t) payloadLength);
     }
     // write masking key if masked
-    std::memcpy(rawHeader.data() + 2 + offset, maskingKey, 4);
+    if(masked) std::memcpy(rawHeader.data() + 2 + offset, maskingKey, 4);
     // put raw to buffer
     writer.write(rawHeader.data(), rawHeader.size());
 }

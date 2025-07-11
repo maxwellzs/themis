@@ -42,7 +42,7 @@ themis::Server::Server(const std::string &ip, uint16_t port) {
                 Spinlock lock(upgradeFlag);
                 // check if there are any pending upgrades
                 while(!upgradeQueue.empty()) {
-                    std::unique_ptr<SessionHandler> handler = std::move(upgradeQueue.front());
+                    std::unique_ptr<WebsocketSessionHandler> handler = std::move(upgradeQueue.front());
                     LOG(INFO) << "upgrading session : " << handler->getSession()->toString();
                     upgradeQueue.pop();
                     // toggle write event to write out the handshake

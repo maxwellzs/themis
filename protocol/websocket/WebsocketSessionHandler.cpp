@@ -35,6 +35,7 @@ void themis::WebsocketSessionHandler::dispatchFrame() {
             std::visit(writeVisitor, message);
             break;
         case WebsocketFrameHeader::CONTINUATION_FRAME:
+            if(! message.valueless_by_exception()) throw std::runtime_error("invalid continuation frame");
             std::visit(writeVisitor, message);
             break;
         case WebsocketFrameHeader::CONNECTION_CLOSE_FRAME:
@@ -70,4 +71,9 @@ void themis::WebsocketSessionHandler::handleSession() {
         // prepare next frame
         pendingFrame->reset();
     }
+}
+
+void themis::WebsocketSessionHandler::finish(bool text) {
+    wsWriter.finish(text);
+    event_add(session->getWriteEvent(), nullptr);
 }

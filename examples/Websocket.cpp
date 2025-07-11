@@ -8,6 +8,8 @@ public:
     SampleEventListener(themis::WebsocketSessionHandler& handler, const std::unique_ptr<themis::EventQueue>& queue) 
     : themis::WebsocketSessionHandler::EventListener(handler, queue) {}
     virtual void onText(themis::WebsocketSessionHandler& handler, const std::string& msg) override {
+        ws.getOutputStream() << std::string(1000, '@');
+        ws.finish(true);
         LOG(INFO) << "message : " << msg;
     };
     virtual void onBinary(themis::WebsocketSessionHandler& handler, const std::vector<uint8_t>& msg) override {

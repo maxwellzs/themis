@@ -24,6 +24,7 @@ add_library(themisRuntime SHARED
     "protocol/http/HttpSessionHandler.cpp"
     "protocol/websocket/WebsocketSessionHandler.cpp"
     "protocol/websocket/WebsocketFrame.cpp"
+    "protocol/websocket/WebsocketWriter.cpp"
     "utils/Buffer.cpp"
     "utils/Promise.cpp"
     "utils/EventQueue.cpp"

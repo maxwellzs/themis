@@ -26,7 +26,7 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr, bool toggleWrite) 
     
     evutil_socket_t fd = (**itPtr).handler->getSession()->getSocket();
     // set up read&write events
-    event *readEvent = event_new(base, fd, EV_READ | EV_TIMEOUT | EV_PERSIST, [](evutil_socket_t fd, short ev, void *args) {
+    event *readEvent = event_new(base, fd, EV_READ | EV_PERSIST, [](evutil_socket_t fd, short ev, void *args) {
 
         SessionIterator *it = reinterpret_cast<SessionIterator *>(args);
         Reactor &parent = (**it)._this;
@@ -35,10 +35,6 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr, bool toggleWrite) 
 
         // handle read
         try {
-            if (ev & EV_TIMEOUT) {
-                // connection timed out
-                throw std::exception();
-            }
             (**it).handler->getSession()->setLastActive(time(nullptr));
             parent.handleSessionRead(fd,handler);
         } catch(const SessionMovedException& move) {
@@ -55,7 +51,7 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr, bool toggleWrite) 
         
     },itPtr);
 
-    event *writeEvent = event_new(base, fd, EV_WRITE | EV_TIMEOUT, [](evutil_socket_t fd, short ev, void *args) {
+    event *writeEvent = event_new(base, fd, EV_WRITE, [](evutil_socket_t fd, short ev, void *args) {
 
         SessionIterator *it = reinterpret_cast<SessionIterator *>(args);
         Reactor &parent = (**it)._this;
@@ -63,10 +59,6 @@ void themis::Reactor::prepareSession(SessionIterator * itPtr, bool toggleWrite) 
         const std::unique_ptr<Session>& session = (**it).handler->getSession();
 
         try {
-            if (ev & EV_TIMEOUT) {
-                // connection timed out
-                throw std::exception();
-            }
             (**it).handler->getSession()->setLastActive(time(nullptr));
             parent.handleSessionWrite(fd, session);
         } catch (const std::exception &e) {
